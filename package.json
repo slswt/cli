@@ -1,13 +1,14 @@
 {
-  "name": "cli",
-  "version": "1.0.0",
+  "name": "@slswt/cli",
+  "version": "0.0.1",
   "description": "",
   "main": "cli.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "bin": {
-    "slswt": "./cli.js"
+    "slswt": "./cli.js",
+    "slswtinternals": "./internals.js"
   },
   "repository": {
     "type": "git",
@@ -23,6 +24,15 @@
   "dependencies": {
     "commander": "^2.19.0",
     "fs-extra": "^7.0.0",
-    "inquirer": "^6.2.0"
+    "inquirer": "^6.2.0",
+    "@slswt/utils": "^0.0.3",
+    "@yarnpkg/lockfile": "^1.1.0",
+    "adm-zip": "^0.4.11",
+    "eol": "^0.9.1",
+    "lodash": "^4.17.11",
+    "memory-fs": "^0.4.1",
+    "pkg-dir": "^3.0.0",
+    "webpack": "^4.23.1",
+    "webpack-node-externals": "^1.7.2"
   }
 }
