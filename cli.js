@@ -2,11 +2,12 @@
 const program = require('commander');
 const { join } = require('path');
 const pkgDir = require('pkg-dir');
-const scaffold = require('./scaffold');
 const projectBlueprints = require('@slswt/utils/projectBlueprints');
 const getDeploymentSchema = require('@slswt/utils/getDeploymentSchema');
 const { readFileSync } = require('fs');
-const templateService = require('./templateService');
+const scaffold = require('./scaffold');
+const template = require('./commands/template');
+const invoke = require('./commands/invoke');
 
 program.version('0.0.1');
 
@@ -47,7 +48,7 @@ program
   .description('Initialize a new service from template')
   .action(function(dir, options) {
     const serviceFolder = parseDir(dir);
-    templateService(serviceFolder);
+    template(serviceFolder);
   });
 
 program
@@ -56,6 +57,21 @@ program
   .action(function(dir, options) {
     const terraformRoot = pkgDir.sync(parseDir(dir));
     getDeploymentSchema(terraformRoot);
+  });
+
+program
+  .command('deploy [dir]')
+  .description('Will deploy the service in dir (must be service in Environments or Blueprints)')
+  .action(function(dir) {
+    const serviceFolder = parseDir(dir);
+  });
+
+program
+  .command('invoke [dir]')
+  .description('Will invoke the service in the current directory')
+  .action(function(dir) {
+    const serviceFolder = parseDir(dir);
+    invoke(serviceFolder);
   });
 
 program.parse(process.argv);

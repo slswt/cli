@@ -1,5 +1,7 @@
 node_modules
 slswt-remote-config.json
+invoke_data.*.js
+**/invoke_data/*
 
 **/.webpack/*
 

@@ -26,7 +26,3 @@ output "s3_bucket_name_prefix" {
 output "lambda_name_prefix" {
   value = "${data.external.config.result.projectId}-${var.environment}"
 }
-
-output "lambda_deployment_bucket" {
-  value = "${local.s3_bucket_name_prefix}-lambda-deployments"
-}

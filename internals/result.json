@@ -1,0 +1,4 @@
+{
+  "stack_name": "as-resolver-stack-ds954c9ee17510442a2e20f14bde178d",
+  "cloud_formation_stack": "{\n  \"Resources\": {\n    \"RegisterApnsToken\": {\n      \"Type\": \"AWS::AppSync::Resolver\",\n      \"Properties\": {\n        \"ApiId\": \"rwzroj2gunf55lkcox64w5ziie\",\n        \"TypeName\": \"Mutation\",\n        \"FieldName\": \"registerApnsToken\",\n        \"DataSourceName\": \"ds954c9ee17510442a2e20f14bde178d\",\n        \"RequestMappingTemplate\": \"\\n{\\n  \\\"version\\\" : \\\"2017-02-28\\\",\\n  \\\"operation\\\": \\\"Invoke\\\",\\n  \\\"payload\\\": {\\n    \\\"field\\\": \\\"registerApnsToken\\\",\\n    \\\"headers\\\": $util.toJson($context.request.headers),\\n    \\\"args\\\": $util.toJson($context.args),\\n    \\\"identity\\\": $util.toJson($context.identity)\\n  }\\n}\\n\",\n        \"ResponseMappingTemplate\": \"$util.toJson($ctx.result)\"\n      }\n    }\n  }\n}"
+}

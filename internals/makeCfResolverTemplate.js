@@ -7,7 +7,7 @@ module.exports = (argv) => {
 
   fs.writeFileSync(
     path.join(__dirname, 'debug.json'),
-    JSON.stringify(argv, null, 2)
+    JSON.stringify(argv, null, 2),
   );
 
   const fields = JSON.parse(fieldsJsonString);
@@ -42,7 +42,7 @@ module.exports = (argv) => {
         },
       },
     }),
-    {}
+    {},
   );
 
   const stringResponse = `${JSON.stringify(
@@ -53,12 +53,17 @@ module.exports = (argv) => {
           Resources,
         },
         null,
-        2
+        2,
       ),
     },
     null,
-    2
+    2,
   )}\n`;
+
+  fs.writeFileSync(
+    path.join(__dirname, 'result.json'),
+    stringResponse,
+  );
 
   process.stdout.write(stringResponse);
 };

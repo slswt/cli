@@ -19,7 +19,6 @@ module "simple_lambda" {
   service                  = "./service.js"
   module_path              = "${path.module}"
   handler_entries          = ["invoke"]
-  lambda_deployment_bucket = "${module.config.lambda_deployment_bucket}"
   lambda_name_prefix       = "${module.config.lambda_name_prefix}"
   lambda_environment       = "${module.microservices_env.lambda_environment}"
 }

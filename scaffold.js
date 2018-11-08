@@ -14,11 +14,7 @@ const evalTemplate = require('./utils/evalTemplate');
 
 const directories = {
   Blueprints: {
-    data_stores: {
-      s3: {
-        lambda_deployment_bucket: {},
-      },
-    },
+    data_stores: {},
     services: {
       microservices: {},
     },
@@ -60,9 +56,7 @@ const getNewFolders = (obf, pathf) => {
   };
   traverse(obf, pathf);
   return folders
-    .filter((cd) => {
-      return !folders.find((d) => d.match(cd) && d !== cd);
-    })
+    .filter((cd) => !folders.find((d) => d.match(cd) && d !== cd))
     .sort();
 };
 
@@ -134,29 +128,16 @@ const scaffold = async (path) => {
           'In which aws region would you like to houst your state files?',
         choices: regions,
       },
-    ]
+    ],
   );
 
   const tfFile = remoteStateConfig({ remoteStateBucket, roleArn, region });
-
-  const lambdaDeploymentBucketTemplatePath = join(
-    __dirname,
-    'templates/scaffold/lambda_deployment_bucket.tf'
-  );
-  const lambdaDeploymentBucketPath = join(
-    path,
-    'Blueprints/data_stores/s3/lambda_deployment_bucket'
-  );
 
   const gitignorePath = join(path, '.gitignore');
   const webpackPath = join(path, 'webpack.config.js');
   const packageJsonPath = join(path, 'package.json');
   const configRoot = join(path, 'Modules/utils/config');
   const configPaths = [
-    {
-      outpath: join(configRoot, 'config-to-tf.js'),
-      template: join(__dirname, 'templates/scaffold/config/config-to-tf.js'),
-    },
     {
       outpath: join(configRoot, 'config.json'),
       template: join(__dirname, 'templates/scaffold/config/config.json'),
@@ -177,7 +158,7 @@ const scaffold = async (path) => {
         message:
           'Enter a project specific id (will be used for your lambdas, dynamodb tables and buckets)',
       },
-    ]
+    ],
   );
 
   console.log('Will create the following files');
@@ -187,12 +168,11 @@ const scaffold = async (path) => {
         gitignorePath,
         webpackPath,
         packageJsonPath,
-        join(lambdaDeploymentBucketPath, 'main.tf'),
         ...configPaths.map(({ outpath }) => outpath),
       ],
       null,
-      2
-    )
+      2,
+    ),
   );
 
   console.log('Will create the following config file');
@@ -221,20 +201,20 @@ const scaffold = async (path) => {
 
     writeFileSync(
       gitignorePath,
-      readFileSync(join(__dirname, 'templates/scaffold/gitignore.txt'))
+      readFileSync(join(__dirname, 'templates/scaffold/gitignore.txt')),
     );
     writeFileSync(
       webpackPath,
-      readFileSync(join(__dirname, 'templates/scaffold/webpack.config.js'))
+      readFileSync(join(__dirname, 'templates/scaffold/webpack.config.js')),
     );
     writeFileSync(
       packageJsonPath,
-      readFileSync(join(__dirname, 'templates/scaffold/package.json'))
+      readFileSync(join(__dirname, 'templates/scaffold/package.json')),
     );
 
     writeFileSync(
       packageJsonPath,
-      readFileSync(join(__dirname, 'templates/scaffold/package.json'))
+      readFileSync(join(__dirname, 'templates/scaffold/package.json')),
     );
 
     configPaths.forEach(({ outpath, template }) => {
@@ -242,26 +222,16 @@ const scaffold = async (path) => {
         outpath,
         evalTemplate(template, {
           projectId,
-        })
+        }),
       );
     });
-
-    writeFileSync(
-      join(lambdaDeploymentBucketPath, 'main.tf'),
-      evalTemplate(lambdaDeploymentBucketTemplatePath, {
-        configPath: relative(
-          lambdaDeploymentBucketPath,
-          join(pkgDir.sync(path), 'Modules/utils/config')
-        ),
-      })
-    );
 
     copySync(
       join(__dirname, 'templates/scaffold/microservices_env'),
       join(path, 'Modules/utils/microservices_env'),
       {
         overwrite: false,
-      }
+      },
     );
   }
 
@@ -269,7 +239,7 @@ const scaffold = async (path) => {
   console.log('Run:');
   console.log('eval $(assume-role [Your role here])');
   console.log(
-    'yarn install && cd Global/s3/remote_state && tf init && tf apply'
+    'yarn install && cd Global/s3/remote_state && tf init && tf apply',
   );
 };
 

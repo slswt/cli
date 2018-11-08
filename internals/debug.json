@@ -1,0 +1,5 @@
+{
+  "ApiId": "rwzroj2gunf55lkcox64w5ziie",
+  "fields": "[{\"type\":\"Mutation\",\"value\":\"registerApnsToken\"}]",
+  "DataSourceName": "ds954c9ee17510442a2e20f14bde178d"
+}
