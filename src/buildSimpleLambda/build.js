@@ -1,99 +1,94 @@
+const crypto = require('crypto');
 const AdmZip = require('adm-zip');
+const identity = require('lodash/identity');
 const fs = require('fs-extra');
 const MemoryFs = require('memory-fs');
-const snakeCase = require('lodash/snakeCase');
 const webpack = require('webpack');
-const { join } = require('path');
+const { join, parse } = require('path');
 const pkgDir = require('pkg-dir');
-const makeWebpackConfig = require('./webpack.config');
+const requiredParam = require('@slswt/utils/requiredParam');
+const kebabCase = require('lodash/kebabCase');
+const getExportsFromWebpackEntryInStats = require('../../utils/getExportsFromWebpackEntryInStats');
+const getDeployKey = require('../../utils/getDeployKey');
+const makeWebpackConfig = require('./src/webpack.config');
 const removeDevDeps = require('./removeDevDeps');
+const { LAMBDA_DEPLOYMENT_BUCKET } = require('../../naming');
 
-const build = ({
-  rootPath,
-  servicePath,
-  webpackMode,
-  environment,
-  path,
-  functionName,
-  nodeExternalsWhitelist,
+const md5 = (what) => crypto
+  .createHash('md5')
+  .update(what)
+  .digest('hex');
+
+const build = async ({
+  liveFolder = requiredParam('liveFolder'),
+  service = requiredParam('service'),
 }) => {
-  const buildDir = join(rootPath, '.webpack');
-  const projectRoot = pkgDir.sync(rootPath);
-  const webpackEntry = join(path, servicePath);
-  const debugFile = join(buildDir, 'debug.json');
-  const zipFile = join(buildDir, 'service.zip');
-  const outputFile = join(buildDir, 'output.json');
+  /* under which circumstances was this service deployed? */
+  const [,
+    project,
+    platform,
+    account,
+    region,
+    environment,
+    version,
+    path,
+  ] = liveFolder.match(
+    /\.Live\/([^/]+)\/([^/]+)\/([^/]+)\/([^/]+)\/([^/]+)\/([^/]+)\/(.+)$/,
+  );
+
+  const inputData = `${JSON.stringify(
+    {
+      liveFolder,
+      service,
+    },
+    null,
+    2,
+  )}\n`;
+
+  const { source } = JSON.parse(
+    fs.readFileSync(join(liveFolder, 'source.json')),
+  );
+
+  /* deployment params */
+
+  const sourceFolder = join(liveFolder, source);
+  const params = await getDeployKey(source, identity, region);
+
+  const projectRoot = pkgDir.sync(liveFolder);
+
+  const serviceNoExt = service.replace(/\.[^.]+$/, '');
+
+  const buildDir = join(liveFolder, '.webpack', serviceNoExt);
+  const webpackEntry = join(sourceFolder, service);
+  const debugFile = join(buildDir, 'debug.log');
 
   fs.ensureDirSync(buildDir);
 
-  fs.writeFileSync(
-    join(buildDir, 'input.json'),
-    JSON.stringify(
-      {
-        rootPath,
-        servicePath,
-        webpackMode,
-        environment,
-        path,
-        functionName,
-      },
-      null,
-      2
-    )
-  );
+  fs.writeFileSync(join(buildDir, 'input.json'), inputData);
 
-  const result = {
-    hasErrors: 'nope',
-    buildDir,
-    zipFile,
-  };
-  fs.writeFileSync(debugFile, 'No errors');
+  const variablesDebugContent = `${JSON.stringify(
+    {
+      buildDir,
+      webpackEntry,
+    },
+    null,
+    2,
+  )}\n`;
+  fs.writeFileSync(join(buildDir, 'variables.json'), variablesDebugContent);
 
   const handleError = (err) => {
     fs.writeFileSync(debugFile, `${err.stack || err}`);
-    result.hasErrors =
-      'There were some build errors, check the .webpack folder';
-    console.log(JSON.stringify(result, null, 2));
+    throw new Error('Something went wrong, check your .Live folder debug.log');
   };
 
-  let whitelist = null;
-
-  {
-    /* handle whitelist */
-    try {
-      whitelist = JSON.parse(nodeExternalsWhitelist);
-    } catch (err) {
-      handleError(err);
-    }
-
-    if (!whitelist) {
-      process.exit(1);
-    }
-
-    if (!Array.isArray(whitelist)) {
-      handleError(
-        'whitelist is not an array! ' + JSON.stringify(whitelist, null, 2)
-      );
-      process.exit(1);
-    }
-  }
-
-  try {
-    build();
-  } catch (err) {
-    handleError(err);
-  }
-
-  function build() {
+  function doBuild() {
     const tmpFs = new MemoryFs();
     const compilerGetDeps = webpack(
       makeWebpackConfig({
         entry: webpackEntry,
-        mode: webpackMode,
         projectRoot,
         bundleDeps: true,
-        whitelist,
-      })
+      }),
     );
     compilerGetDeps.outputFileSystem = tmpFs;
 
@@ -101,21 +96,19 @@ const build = ({
     const compiler = webpack(
       makeWebpackConfig({
         entry: webpackEntry,
-        mode: webpackMode,
         projectRoot,
         bundleDeps: false,
-      })
+      }),
     );
     compiler.outputFileSystem = memFs;
 
     const getHash = (fname) => fname.match(/^(\w|\d)+\./)[0].slice(0, -1);
 
-    const runCompiler = (comp, id) =>
-      new Promise((resolve) => {
-        comp.run((err, stats) => {
-          resolve({ err, stats, id });
-        });
+    const runCompiler = (comp, id) => new Promise((resolve) => {
+      comp.run((err, stats) => {
+        resolve({ err, stats, id });
       });
+    });
 
     Promise.all([
       runCompiler(compiler, 'noDeps'),
@@ -126,40 +119,40 @@ const build = ({
           const statsFile = join(buildDir, `${id}_webpack_stats.json`);
           const cliOutputFile = join(buildDir, `${id}_webpack_output.log`);
           const errFile = join(buildDir, `${id}_webpack_errors.json`);
-          const jsonStats = stats.toJson();
+          fs.writeFileSync(statsFile, JSON.stringify(stats.toJson(), null, 2));
+          fs.writeFileSync(cliOutputFile, stats.toString());
+
           if (err || stats.hasErrors()) {
             fs.writeFileSync(errFile, err);
-            result.hasErrors += `There were some errors, please check ${errFile} and ${statsFile}\n`;
+            handleError(
+              `There were some errors, please check ${errFile} and ${statsFile}\n`,
+            );
           }
-          fs.writeFileSync(statsFile, JSON.stringify(jsonStats, null, 2));
-          fs.writeFileSync(cliOutputFile, stats);
         });
 
         return Promise.resolve(
-          compiledResult.find(({ id }) => id === 'analyzeDeps')
+          compiledResult.find(({ id }) => id === 'analyzeDeps'),
         );
       })
       .then(({ stats }) => {
         /* The stats correpond to analyzeDeps, but the saved file is form noDeps */
-        const jsonStats = stats.toJson();
         const compiledFileName = Object.keys(memFs.data)[0];
         /* just the hash of the written code, not taking node_modules into account */
-        result.fileHash = getHash(compiledFileName);
-        /* this takes the node_modules into accout */
-        result.completeHash = getHash(Object.keys(tmpFs.data)[0]);
+        const completeHash = getHash(Object.keys(tmpFs.data)[0]);
 
         const usedDependencies = [
           ...new Set(
-            jsonStats.modules
-              .map(({ name }) => name)
+            stats
+              .toJson()
+              .modules.map(({ name }) => name)
               .filter(
-                (name) => !name.match(/^external/) && name.match(/node_modules/)
+                (name) => !name.match(/^external/) && name.match(/node_modules/),
               )
               .map((name) => {
                 const modulePathing = name.split('node_modules/')[1];
                 const moduleName = modulePathing.split('/')[0];
                 return moduleName;
-              })
+              }),
           ),
         ].filter((name) => name !== 'aws-sdk');
 
@@ -168,7 +161,7 @@ const build = ({
         zip.addFile('service.js', memFs.data[compiledFileName]);
         fs.writeFileSync(
           join(buildDir, 'service.js'),
-          memFs.data[compiledFileName]
+          memFs.data[compiledFileName],
         );
 
         const deps = removeDevDeps({
@@ -178,24 +171,24 @@ const build = ({
         deps.forEach((dep) => {
           zip.addLocalFolder(
             join(projectRoot, 'node_modules', dep),
-            `node_modules/${dep}`
+            `node_modules/${dep}`,
           );
         });
         const packageJson = JSON.parse(
-          fs.readFileSync(join(projectRoot, 'package.json'), 'utf-8')
+          fs.readFileSync(join(projectRoot, 'package.json'), 'utf-8'),
         );
         const pkgDependencies = deps.reduce(
           (ob, dep) => ({
             ...ob,
             [dep]: packageJson[dep],
           }),
-          {}
+          {},
         );
         zip.addFile(
           'package.json',
           JSON.stringify(
             {
-              name: snakeCase(functionName),
+              name: kebabCase(serviceNoExt),
               version: '1.0.0',
               description: 'Packaged externals for the simple_lambda',
               private: true,
@@ -203,20 +196,89 @@ const build = ({
               dependencies: pkgDependencies,
             },
             null,
-            2
-          )
+            2,
+          ),
         );
 
         // write everything to disk
-        zip.writeZip(zipFile);
+        const zipFilePath = join(buildDir, 'lambda_package.zip');
+        zip.writeZip(zipFilePath);
 
-        const stringResponse = JSON.stringify(result, null, 2);
-        fs.writeFileSync(outputFile, stringResponse);
+        fs.writeFileSync(
+          join(buildDir, 'test.json'),
+          JSON.stringify(stats.toJson(), null, 2),
+        );
+
+        const entriesList = getExportsFromWebpackEntryInStats(
+          stats.toJson(),
+          webpackEntry,
+        );
+
+        let entries = '';
+        let functionNames = '';
+        let functionDescriptions = '';
+        let lambdaHandlers = '';
+        /* the lambdas are scoped by region and platform(aws) and account */
+        const bucket = LAMBDA_DEPLOYMENT_BUCKET({ liveFolder });
+        const s3BucketFileName = service.replace(
+          /\.[^.]+$/,
+          `.${completeHash}.zip`,
+        );
+
+        const slswtPath = liveFolder
+          .replace(projectRoot, '')
+          .replace(/^\//, '');
+        const bucketObjectKey = join(slswtPath, s3BucketFileName);
+        entriesList.forEach((entry) => {
+          const lambdaHandler = `service.${entry}`;
+          const functionDescription = `${slswtPath}/lambda/${serviceNoExt}.${entry}`;
+          entries += `|${entry}`;
+          functionNames += `|${md5(functionDescription)}`;
+          functionDescriptions += `|${functionDescription}`;
+          lambdaHandlers += `|${lambdaHandler}`;
+        });
+        entries = entries.slice(1);
+        functionNames = functionNames.slice(1);
+        functionDescriptions = functionDescriptions.slice(1);
+        lambdaHandlers = lambdaHandlers.slice(1);
+
+        const output = {
+          entries,
+          bucketObjectKey,
+          region,
+          bucket,
+          zipFilePath,
+          functionNames,
+          functionDescriptions,
+          lambdaHandlers,
+          project,
+          platform,
+          account,
+          environment,
+          version,
+          path,
+          /* the actual deployment params, not filtered by the deploy.js */
+          ...Object.entries(params).reduce(
+            (curr, [key, val]) => ({
+              ...curr,
+              [`env_${key}`]: val,
+            }),
+            {},
+          ),
+        };
+        const stringResponse = `${JSON.stringify(output, null, 2)}\n`;
+        fs.writeFileSync(join(buildDir, 'build_output.json'), stringResponse);
         process.stdout.write(stringResponse);
       })
       .catch((err) => {
         handleError(err);
       });
+  }
+
+  try {
+    doBuild();
+  } catch (err) {
+    handleError(err);
   }
 };
 

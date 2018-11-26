@@ -1,20 +1,14 @@
-variable "environment" {
-  description = "The deployment environment"
-}
 
 module "config" {
   source      = "<%= configPath %>"
-  environment = "${var.environment}"
 }
 
 module "microservices_env" {
   source      = "<%= microservicesEnv %>"
-  environment = "${var.environment}"
 }
 
 module "simple_lambda" {
   source                   = "github.com/slswt/modules//services/lambda/simple_lambda"
-  environment              = "${var.environment}"
   lambda_path              = "<%= lambdaPath %>"
   service                  = "./service.js"
   module_path              = "${path.module}"

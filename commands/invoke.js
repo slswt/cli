@@ -1,18 +1,49 @@
 const fs = require('fs-extra');
+const identity = require('lodash/identity');
 const MemoryFs = require('memory-fs');
 const webpack = require('webpack');
+const get = require('lodash/get');
 const nodeExternals = require('webpack-node-externals');
 const { join, parse } = require('path');
 const pkgDir = require('pkg-dir');
 const { execFileSync } = require('child_process');
 const inquirer = require('inquirer');
-const makeWebpackConfig = require('../src/buildSimpleLambda/webpack.config');
+const getExportsFromWebpackEntryInStats = require('../utils/getExportsFromWebpackEntryInStats');
+const makeWebpackConfig = require('../src/buildSimpleLambda/src/webpack.config');
+const getDeployKey = require('../utils/getDeployKey');
 
-const build = (dir) => new Promise((resolve, reject) => {
+const getEnv = ({
+  project,
+  platform,
+  account,
+  region,
+  environment,
+  version,
+  path,
+  dir,
+}) => ({
+  SLSWT_LOCAL_INVOKE: true,
+  dir,
+  root: pkgDir.sync(dir),
+  project,
+  platform,
+  account,
+  region,
+  environment,
+  version,
+  path,
+});
+
+const build = (
+  webpackEntry,
+  {
+    project, platform, account, region, environment, version, path,
+  },
+) => new Promise((resolve, reject) => {
+  const { dir } = parse(webpackEntry);
   const functionName = parse(dir).name;
-  const buildDir = join(dir, '.webpack');
+  const buildDir = join(dir, '.webpack', parse(webpackEntry).name);
   const projectRoot = pkgDir.sync(dir);
-  const webpackEntry = join(dir, 'service.js');
   const debugFile = join(buildDir, 'debug.json');
   const outputFile = join(buildDir, 'output.json');
 
@@ -54,7 +85,6 @@ const build = (dir) => new Promise((resolve, reject) => {
         entry: webpackEntry,
         projectRoot,
         bundleDeps: false,
-        localInvoke: true,
       }),
     );
     compiler.outputFileSystem = memFs;
@@ -79,7 +109,7 @@ const build = (dir) => new Promise((resolve, reject) => {
 
       /* save service entry file to disk */
       fs.writeFileSync(
-        join(buildDir, 'service.js'),
+        join(buildDir, parse(webpackEntry).base),
         memFs.data[compiledFileName],
       );
 
@@ -90,66 +120,61 @@ const build = (dir) => new Promise((resolve, reject) => {
 
       const stringResponse = JSON.stringify(result, null, 2);
       fs.writeFileSync(outputFile, stringResponse);
-      resolve();
+      resolve({ stats: jsonStats, entry: webpackEntry });
     });
   }
   try {
-    execBuild();
+    return execBuild();
   } catch (err) {
     handleError(err);
   }
 });
 
-module.exports = async (dir) => {
-  await build(dir);
+module.exports = async (webpackEntry) => {
+  const { dir, name } = parse(webpackEntry);
+  const params = await getDeployKey(dir, identity);
+  const { stats, entry } = await build(webpackEntry, params);
 
-  const servicePath = require.resolve(join(dir, '.webpack/service'));
+  const compiledServicePath = require.resolve(join(dir, '.webpack', name));
 
-  let choices = [];
-
-  try {
-    choices = Object.keys(require(servicePath));
-    delete require.cache[servicePath];
-  } catch (err) {
-    // just import this to key the exported values, ignore errors
-  }
+  const choices = getExportsFromWebpackEntryInStats(stats, entry);
 
   if (!choices.length) {
     console.log('No exports found');
     return;
   }
 
-  const { entry } = await inquirer.prompt([
+  const { funcName } = await inquirer.prompt([
     {
-      name: 'entry',
+      name: 'funcName',
       type: 'list',
       message: 'Which exported function would you like to invoke?',
       choices,
     },
   ]);
   const invokeDataPath = [
-    join(dir, `invoke_data.${entry}.args.js`),
-    join(dir, `invoke_data/${entry}.args.js`),
+    join(dir, `invoke_data.${name}.${funcName}.args.js`),
+    join(dir, 'invoke_data', name, `${funcName}.args.js`),
   ].find((p) => fs.existsSync(p));
 
   const invokeEnvPath = [
-    join(dir, `invoke_data.${entry}.env.js`),
-    join(dir, `invoke_data/${entry}.env.js`),
+    join(dir, `invoke_data.${name}.${funcName}.env.js`),
+    join(dir, 'invoke_data', name, `${funcName}.env.js`),
   ].find((p) => fs.existsSync(p));
 
-  let entryData = [];
+  let funcData = [];
   if (invokeDataPath) {
-    entryData = require(invokeDataPath);
-    if (!Array.isArray(entryData)) {
+    funcData = require(invokeDataPath);
+    if (!Array.isArray(funcData)) {
       throw new Error(
         'The module.exports in '
-          + `invoke_data.${entry}.args.js must be an array of arguments to pass to the ${entry} function`,
+          + `invoke_data.${name}.${funcName}.args.js must be an array of arguments to pass to the ${funcName} function`,
       );
     }
   } else {
-    fs.ensureDirSync(join(dir, 'invoke_data'));
+    fs.ensureDirSync(join(dir, 'invoke_data', name));
     fs.writeFileSync(
-      join(dir, 'invoke_data', `${entry}.args.js`),
+      join(dir, 'invoke_data', name, `${funcName}.args.js`),
       'module.exports = [];\n',
     );
   }
@@ -159,17 +184,25 @@ module.exports = async (dir) => {
     if (!envs || Array.isArray(envs)) {
       throw new Error(
         'The module.exports in '
-          + `invoke_data.${entry}.env.js must be an object of environment variables to pass to the ${entry} function`,
+          + `invoke_data.${funcName}.env.js must be an object of environment variables to pass to the ${funcName} function`,
       );
     }
-    Object.assign(process.env, envs);
+    Object.assign(
+      process.env,
+      getEnv({
+        ...params,
+        dir,
+      }),
+      params,
+      envs,
+    );
   } else {
-    fs.ensureDirSync(join(dir, 'invoke_data'));
+    fs.ensureDirSync(join(dir, 'invoke_data', name));
     fs.writeFileSync(
-      join(dir, 'invoke_data', `${entry}.env.js`),
+      join(dir, 'invoke_data', name, `${funcName}.env.js`),
       'module.exports = {};\n',
     );
   }
-  const result = await require(servicePath)[entry](...entryData);
+  const result = await require(compiledServicePath)[funcName](...funcData);
   console.log(result);
 };

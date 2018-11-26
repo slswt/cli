@@ -8,7 +8,6 @@ module.exports = ({
   projectRoot,
   bundleDeps,
   whitelist = [],
-  localInvoke = false,
 }) => {
   const externals = !bundleDeps
     ? [
@@ -41,11 +40,6 @@ module.exports = ({
       filename: '[contenthash].service.js',
       libraryTarget: 'commonjs2',
     },
-    plugins: localInvoke ? [
-      ...basePlugins,
-      new webpack.EnvironmentPlugin({
-        SLSWT_LOCAL_INVOKE: true,
-      }),
-    ] : basePlugins,
+    plugins: basePlugins,
   };
 };

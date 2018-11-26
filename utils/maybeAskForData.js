@@ -1,8 +1,6 @@
-const { existsSync } = require('fs-extra');
+const { existsSync, readFileSync } = require('fs-extra');
 const inquirer = require('inquirer');
 const has = require('lodash/has');
-
-let { remoteStateBucket, roleArn, region } = {};
 
 module.exports = async (path, keys, questions) => {
   let args = {};
@@ -15,15 +13,20 @@ module.exports = async (path, keys, questions) => {
       },
     ]);
     if (confirmedUseExisting) {
-      args = require(path);
+      try {
+        args = JSON.parse(readFileSync(path));
+      } catch (err) {
+        console.log(err);
+      }
     }
   }
-  
+
   if (!keys.every((key) => has(args, key))) {
     const neededQuestionsKeys = keys.filter((key) => !args[key]);
     const neededQuestions = questions.filter(({ name }) => neededQuestionsKeys.includes(name));
-    args = await inquirer.prompt(questions);
+    const newArgs = await inquirer.prompt(neededQuestions);
+    Object.assign(args, newArgs);
   }
 
   return args;
-}
+};

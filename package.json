@@ -32,6 +32,7 @@
     "inquirer": "^6.2.0",
     "lodash": "^4.17.11",
     "memory-fs": "^0.4.1",
+    "minimist": "^1.2.0",
     "pkg-dir": "^3.0.0",
     "webpack": "^4.23.1",
     "webpack-node-externals": "^1.7.2"

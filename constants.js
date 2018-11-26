@@ -1,0 +1,20 @@
+module.exports = {
+  AWS_REGIONS: [
+    'us-west-2',
+    'us-west-1',
+    'us-east-2',
+    'us-east-1',
+    'ap-sou',
+    'ap-nor',
+    'ap-sou',
+    'ap-sou',
+    'ap-nor',
+    'ca-central-1',
+    'cn-nor',
+    'eu-central-1',
+    'eu-west-1',
+    'eu-west-2',
+    'eu-west-3',
+    'sa-east-1',
+  ],
+};
