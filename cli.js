@@ -1,4 +1,4 @@
-#!/usr/bin/env node --experimental-modules --no-warnings
+#!/usr/bin/env node
 const program = require('commander');
 const { join } = require('path');
 const pkgDir = require('pkg-dir');
@@ -13,37 +13,36 @@ const parseDir = require('./utils/parseDir');
 
 program.version('0.0.1');
 
-
 program
   .command('init [dir]')
   .description('Scaffold the project')
-  .action((dir, options) => {
+  .action((dir) => {
     scaffold(parseDir(dir));
   });
 
 program
   .command('project [dir]')
   .description('Project blueprints')
-  .action((dir, options) => {
+  .action((dir) => {
     const terraformRoot = pkgDir.sync(parseDir(dir));
     const { tfRemoteStateBucket, region } = JSON.parse(
       readFileSync(join(terraformRoot, '.slswtrc')),
     );
-    const { roleArn } = JSON.parse(
+    const providers = JSON.parse(
       readFileSync(join(terraformRoot, '.slswtrc.secrets')),
     );
     projectBlueprints({
       terraformRoot,
       stateBucket: tfRemoteStateBucket,
       stateBucketRegion: region,
-      role: roleArn,
+      providers,
     });
   });
 
 program
   .command('template [dir]')
   .description('Initialize a new service from template')
-  .action((dir, options) => {
+  .action((dir) => {
     const serviceFolder = parseDir(dir);
     template(serviceFolder);
   });

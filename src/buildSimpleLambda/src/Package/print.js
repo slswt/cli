@@ -15,7 +15,7 @@ function print() {
   let lambdaHandlers = '';
   /* the lambdas are scoped by region and platform(aws) and account */
   const { live: liveFolder } = this.folders;
-  const bucket = LAMBDA_DEPLOYMENT_BUCKET({ liveFolder });
+  const bucket = LAMBDA_DEPLOYMENT_BUCKET({ region: this.region, liveFolder });
   const s3BucketFileName = this.files.service.replace(
     /\.[^.]+$/,
     `.${this.compilation.hash}.zip`,

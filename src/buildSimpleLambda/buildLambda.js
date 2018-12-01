@@ -6,11 +6,13 @@ const build = async ({
   liveFolder = requiredParam('liveFolder'),
   service = requiredParam('service'),
   id = requiredParam('id'),
+  region = requiredParam('region'),
 }) => {
   const pkg = new Package({
     liveFolder: parseDir(liveFolder),
     service,
     id,
+    region,
   });
   pkg.initFolderStructure();
   await pkg.build();

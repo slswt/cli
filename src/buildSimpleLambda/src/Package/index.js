@@ -34,14 +34,13 @@ class Compilation {
     liveFolder = requiredParam('liveFolder'),
     service = requiredParam('service'),
     id = requiredParam('id'),
+    region = requiredParam('region'),
   }) {
     this.print = print;
+    this.region = region;
 
     const {
       project,
-      platform,
-      account,
-      region,
       environment,
       version,
       path,
@@ -49,9 +48,6 @@ class Compilation {
 
     this.deploymentIdParams = {
       project,
-      platform,
-      account,
-      region,
       environment,
       version,
       path,
@@ -142,6 +138,7 @@ class Compilation {
           data: slswtBabelTransform(
             noDeps.fs.data[Object.keys(noDeps.fs.data)[0]],
             this.deploymentParams,
+            this.folders.source,
           ),
           usedDependencies: getUsedDependencies(deps.stats),
         });

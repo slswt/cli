@@ -6,33 +6,26 @@ const liveTemplate = require('../utils/liveTemplate');
 const askForRegion = require('../utils/askForRegion');
 const getDeployURI = require('../utils/getDeployURI');
 const getDeploymentParams = require('../utils/getDeploymentParams');
-const getParamsFromLiveFolderPath = require('../utils/getParamsFromLiveFolderPath');
 
 module.exports = async (somedir) => {
   let dirname = somedir;
 
-  let region;
 
   if (somedir.match(/\.Live/)) {
     const { source } = JSON.parse(
       fs.readFileSync(join(somedir, 'source.json')),
     );
     dirname = join(somedir, source);
-    ({ region } = getParamsFromLiveFolderPath(somedir));
   }
 
-  if (!region) {
-    region = await askForRegion();
-  }
 
   const root = pkgDir.sync(dirname);
   const slswtRc = JSON.parse(fs.readFileSync(join(root, '.slswtrc')));
-  const { role, accountId } = JSON.parse(
+  const providers = JSON.parse(
     fs.readFileSync(join(root, '.slswtrc.secrets')),
   );
-  const roleArn = `arn:aws:iam::${accountId}:role/${role}`;
 
-  const deployURI = getDeployURI(dirname, region);
+  const deployURI = getDeployURI(dirname);
 
   const liveDirectory = join(root, '.Live', deployURI);
   const key = join('.Live', deployURI, 'terraform.tfstate');
@@ -40,20 +33,21 @@ module.exports = async (somedir) => {
   console.log({
     stateBucket: slswtRc.tfRemoteStateBucket,
     stateBucketRegion: slswtRc.tfRemoteStateBucketRegion,
-    role: roleArn,
     moduleName: parse(dirname).name,
     key,
     source: relative(liveDirectory, dirname),
-    region,
   });
+  
+  const region = await askForRegion();
+  /* @TODO ask for which providers should be available */
   const template = liveTemplate({
     stateBucket: slswtRc.tfRemoteStateBucket,
     stateBucketRegion: slswtRc.tfRemoteStateBucketRegion,
-    role: roleArn,
     moduleName: parse(dirname).name,
     key,
     source: relative(liveDirectory, dirname),
     region,
+    providers,
   });
   console.log(template);
 
@@ -74,7 +68,7 @@ module.exports = async (somedir) => {
       2,
     )}\n`,
   );
-  const params = getDeploymentParams(dirname, region);
+  const params = getDeploymentParams(dirname);
   fs.writeFileSync(
     join(liveDirectory, 'params.json'),
     `${JSON.stringify(params, null, 2)}\n`,

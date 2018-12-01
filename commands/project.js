@@ -65,8 +65,8 @@ const projectBlueprints = ({
   terraformRoot = requiredParam('terraformRoot'),
   stateBucket = requiredParam('stateBucket'),
   stateBucketRegion = requiredParam('stateBucketRegion'),
-  role = requiredParam('role'),
   environment = requiredParam('env'),
+  providers = requiredParam('providers'),
 }) => {
   const blueprintRootDir = join(terraformRoot, 'Blueprints');
   const liveRootDir = join(terraformRoot, 'Live');
@@ -75,7 +75,7 @@ const projectBlueprints = ({
   const makeTfModule = liveTemplate({
     stateBucket,
     stateBucketRegion,
-    role,
+    providers,
     environment,
   });
 

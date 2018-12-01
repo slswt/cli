@@ -2,13 +2,13 @@ const babel = require('@babel/core');
 const readServiceParseDeploymentParams = require('../../../../utils/readServiceParseDeploymentParams');
 const { join } = require('path');
 
-const slswtBabelTransform = (sourceCode, deploymentParams) => {
+const slswtBabelTransform = (sourceCode, deploymentParams, sourceFolder) => {
   const plugin = ({ types: t }) => ({
     visitor: {
       Identifier(astPath) {
         if (t.isIdentifier(astPath.node, { name: 'slswtResource' })) {
           const [
-            deploymentPath,
+            globalURI,
             serviceName,
             resourceId,
           ] = astPath.parentPath.node.arguments.map(({ value }) => value);
@@ -25,22 +25,16 @@ const slswtBabelTransform = (sourceCode, deploymentParams) => {
 
           const {
             project,
-            platform,
-            account,
-            region,
             environment,
             version,
-          } = readServiceParseDeploymentParams(deploymentParams);
+          } = readServiceParseDeploymentParams(sourceFolder, deploymentParams);
 
           if (serviceName === 'aws_lambda') {
             resourceURI = join(
               project,
-              platform,
-              account,
-              region,
               environment,
               version,
-              deploymentPath,
+              globalURI,
               serviceName,
               resourceId,
               resourceCustomIdentifiers.entry,

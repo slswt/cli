@@ -1,12 +1,34 @@
 const requiredParam = require('@slswt/utils/requiredParam');
 
+const getProviderBlock = (platform, data) => {
+  if (platform === 'aws') {
+    return `
+provider "aws" {
+  region = "${data.region}"
+
+  assume_role {
+    role_arn = "arn:aws:iam::${data.accountId}:role/${data.role}"
+  }
+}`;
+  }
+  if (platform === 'cloudflare') {
+    return `
+provider "cloudflare" {
+  email = "${data.email}"
+  token = "${data.token}"
+}
+    `;
+  }
+  return '';
+};
+
 const liveTemplate = ({
   stateBucket = requiredParam('stateBucket'),
   stateBucketRegion = requiredParam('stateBucketRegion'),
-  role = requiredParam('role'),
   key = requiredParam('key'),
   moduleName = requiredParam('moduleName'),
   source = requiredParam('source'),
+  providers = requiredParam('providers'),
   region = requiredParam('region'),
 }) => `
 terraform {
@@ -20,13 +42,11 @@ terraform {
   }
 }
 
-provider "aws" {
-  region = "${region}"
-
-  assume_role {
-    role_arn = "${role}"
-  }
-}
+${Object.keys(providers)
+    .map(
+      (platform) => `${getProviderBlock(platform, { region, ...providers[platform] })}\n`,
+    )
+    .join('')}
 
 module "${moduleName}" {
   source = "${source}"

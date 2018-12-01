@@ -6,7 +6,8 @@ const pkgDir = require('pkg-dir');
 const { execFileSync } = require('child_process');
 
 const minimist = require('minimist');
-const build = require('./src/buildSimpleLambda/build');
+const buildLambda = require('./src/buildSimpleLambda/buildLambda');
+const buildWorker = require('./src/buildSimpleLambda/buildWorker');
 const makeCfResolverTemplate = require('./internals/makeCfResolverTemplate');
 const camelCase = require('./internals/camelCase');
 const snakeCase = require('./internals/snakeCase');
@@ -26,9 +27,23 @@ program
   )
   .option('-l, --liveFolder <path>', 'Live folder path')
   .option('-i, --id <id>', 'The id')
+  .option('-r, --region <region>', 'The region for the lambda')
   .description('Builds the simple lambda js bundle')
   .action((options) => {
-    build(options);
+    buildLambda(options);
+  });
+
+program
+  .command('cloudflare_worker_build')
+  .option(
+    '-s, --service <name>',
+    'The relative path from the root path to the javascript entry file (in same folder, e.g. service.js)',
+  )
+  .option('-l, --liveFolder <path>', 'Live folder path')
+  .option('-i, --id <id>', 'The id')
+  .description('Builds the worker js bundle')
+  .action((options) => {
+    buildWorker(options);
   });
 
 program
@@ -118,9 +133,10 @@ program
     if (!naming[argv.key]) {
       throw new Error(`${argv.key} was not found`);
     }
+    const data = JSON.parse(argv.data);
     const name = naming[argv.key]({
       liveFolder,
-      ...argv,
+      ...data,
     });
     process.stdout.write(`${JSON.stringify({ name })}\n`);
   });

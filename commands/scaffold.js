@@ -1,11 +1,9 @@
-const {
-  writeFileSync,
-  ensureDirSync,
-  readFileSync,
-} = require('fs-extra');
+const { writeFileSync, ensureDirSync, readFileSync } = require('fs-extra');
 const { join, parse } = require('path');
 const inquirer = require('inquirer');
 const saveJsonFile = require('@slswt/utils/saveJsonFile');
+const pkgDir = require('pkg-dir');
+const parseDir = require('../utils/parseDir');
 const maybeAskForData = require('../utils/maybeAskForData');
 const { AWS_REGIONS } = require('../constants');
 
@@ -36,12 +34,17 @@ const getNewFolders = (obf, pathf) => {
     .sort();
 };
 
-const remoteStateConfig = ({ region, roleArn, tfRemoteStateBucket }) => `
+const remoteStateConfig = ({
+  region,
+  accountId,
+  role,
+  tfRemoteStateBucket,
+}) => `
 provider "aws" {
   region = "${region}"
 
   assume_role {
-    role_arn = "${roleArn}"
+    role_arn = "arn:aws:iam::${accountId}:role/${role}"
   }
 }
 
@@ -87,28 +90,17 @@ const scaffold = async (path) => {
       },
     ],
   );
-  const { role, accountId } = await maybeAskForData(
-    `${slswtConfigPath}.secrets`,
-    ['accountId', 'role'],
-    [
-      {
-        name: 'accountId',
-        type: 'input',
-        message:
-          'Which aws account id are you using?',
-      },
-      {
-        name: 'role',
-        type: 'input',
-        message:
-          'Which aws role are you assuming?',
-      },
-    ],
-  );
+  const terraformRoot = pkgDir.sync(parseDir(path));
+  const {
+    aws: { role, accountId },
+  } = JSON.parse(readFileSync(join(terraformRoot, '.slswtrc.secrets')));
 
-  const roleArn = `arn:aws:iam::${accountId}:role/${role}`;
-
-  const tfFile = remoteStateConfig({ tfRemoteStateBucket, roleArn, region });
+  const tfFile = remoteStateConfig({
+    region,
+    accountId,
+    role,
+    tfRemoteStateBucket,
+  });
 
   const gitignorePath = join(path, '.gitignore');
   const webpackPath = join(path, 'webpack.config.js');
@@ -143,11 +135,6 @@ const scaffold = async (path) => {
       tfRemoteStateBucket,
       tfRemoteStateBucketRegion: region,
       plugins: [],
-    });
-
-    saveJsonFile(`${slswtConfigPath}.secrets`, {
-      role,
-      accountId,
     });
 
     writeFileSync(

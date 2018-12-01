@@ -15,9 +15,6 @@ const askForRegion = require('../utils/askForRegion');
 
 const getEnv = ({
   project,
-  platform,
-  account,
-  region,
   environment,
   version,
   path,
@@ -27,9 +24,6 @@ const getEnv = ({
   dir,
   root: pkgDir.sync(dir),
   project,
-  platform,
-  account,
-  region,
   environment,
   version,
   path,
@@ -38,7 +32,7 @@ const getEnv = ({
 const build = (
   webpackEntry,
   {
-    project, platform, account, region, environment, version, path,
+    project, environment, version, path,
   },
 ) => new Promise((resolve, reject) => {
   const { dir } = parse(webpackEntry);
