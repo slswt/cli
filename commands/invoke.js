@@ -9,8 +9,9 @@ const pkgDir = require('pkg-dir');
 const { execFileSync } = require('child_process');
 const inquirer = require('inquirer');
 const getExportsFromWebpackEntryInStats = require('../utils/getExportsFromWebpackEntryInStats');
-const makeWebpackConfig = require('../src/buildSimpleLambda/src/webpack.config');
-const getDeployKey = require('../utils/getDeployKey');
+const makeWebpackConfig = require('../src/buildSimpleLambda/src/Package/webpack.config');
+const getDeploymentParams = require('../utils/getDeploymentParams');
+const askForRegion = require('../utils/askForRegion');
 
 const getEnv = ({
   project,
@@ -132,7 +133,10 @@ const build = (
 
 module.exports = async (webpackEntry) => {
   const { dir, name } = parse(webpackEntry);
-  const params = await getDeployKey(dir, identity);
+
+  const region = await askForRegion();
+
+  const params = getDeploymentParams(dir, region);
   const { stats, entry } = await build(webpackEntry, params);
 
   const compiledServicePath = require.resolve(join(dir, '.webpack', name));

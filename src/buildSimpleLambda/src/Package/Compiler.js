@@ -1,8 +1,8 @@
-import MemoryFs from 'memory-fs';
-import webpack from 'webpack';
-import fs from 'fs-extra';
-import { join } from 'path';
-import makeWebpackConfig from './webpack.config';
+const MemoryFs = require('memory-fs');
+const webpack = require('webpack');
+const fs = require('fs-extra');
+const { join } = require('path');
+const makeWebpackConfig = require('./webpack.config');
 
 class Compiler {
   constructor(id, webpackSettings) {
@@ -31,7 +31,10 @@ class Compiler {
           );
         } else {
           resolve({
-            err, stats, id, fs: this.fs,
+            err,
+            stats,
+            id,
+            fs: this.fs,
           });
         }
       });
@@ -39,4 +42,4 @@ class Compiler {
   }
 }
 
-export default Compiler;
+module.exports = Compiler;

@@ -2,7 +2,6 @@ const {
   writeFileSync,
   ensureDirSync,
   readFileSync,
-  copySync,
 } = require('fs-extra');
 const { join, parse } = require('path');
 const inquirer = require('inquirer');
@@ -16,11 +15,8 @@ const directories = {
       remote_state: {},
     },
   },
-  Modules: {
-    utils: {
-      config: {},
-    },
-  },
+  data_stores: {},
+  services: {},
 };
 
 const { keys } = Object;
@@ -91,18 +87,26 @@ const scaffold = async (path) => {
       },
     ],
   );
-  const { roleArn } = await maybeAskForData(
+  const { role, accountId } = await maybeAskForData(
     `${slswtConfigPath}.secrets`,
-    ['roleArn'],
+    ['accountId', 'role'],
     [
       {
-        name: 'roleArn',
+        name: 'accountId',
         type: 'input',
         message:
-          'Which aws role are you assuming (arn:aws:iam::xxxxxxxxxxxx:role/YourRole)?',
+          'Which aws account id are you using?',
+      },
+      {
+        name: 'role',
+        type: 'input',
+        message:
+          'Which aws role are you assuming?',
       },
     ],
   );
+
+  const roleArn = `arn:aws:iam::${accountId}:role/${role}`;
 
   const tfFile = remoteStateConfig({ tfRemoteStateBucket, roleArn, region });
 
@@ -131,6 +135,7 @@ const scaffold = async (path) => {
     newFolders.forEach((folder) => {
       ensureDirSync(folder);
     });
+
     writeFileSync(join(path, 'Global/s3/remote_state/main.tf'), tfFile);
 
     saveJsonFile(slswtConfigPath, {
@@ -141,35 +146,30 @@ const scaffold = async (path) => {
     });
 
     saveJsonFile(`${slswtConfigPath}.secrets`, {
-      roleArn,
+      role,
+      accountId,
     });
 
     writeFileSync(
       gitignorePath,
       readFileSync(join(__dirname, '../', 'templates/scaffold/gitignore.txt')),
     );
+
     writeFileSync(
       webpackPath,
       readFileSync(
         join(__dirname, '../', 'templates/scaffold/webpack.config.js'),
       ),
     );
-    writeFileSync(
-      packageJsonPath,
-      readFileSync(join(__dirname, '../', 'templates/scaffold/package.json')),
-    );
 
     writeFileSync(
       packageJsonPath,
       readFileSync(join(__dirname, '../', 'templates/scaffold/package.json')),
     );
 
-    copySync(
-      join(__dirname, '../', 'templates/scaffold/microservices_env'),
-      join(path, 'Modules/utils/microservices_env'),
-      {
-        overwrite: false,
-      },
+    writeFileSync(
+      packageJsonPath,
+      readFileSync(join(__dirname, '../', 'templates/scaffold/package.json')),
     );
   }
 

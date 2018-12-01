@@ -1,4 +1,4 @@
-#!/usr/bin/env node --experimental-modules --no-warnings
+#!/usr/bin/env node
 const program = require('commander');
 const fs = require('fs');
 const { join, parse } = require('path');
@@ -25,6 +25,7 @@ program
     'The relative path from the root path to the javascript entry file (in same folder, e.g. service.js)',
   )
   .option('-l, --liveFolder <path>', 'Live folder path')
+  .option('-i, --id <id>', 'The id')
   .description('Builds the simple lambda js bundle')
   .action((options) => {
     build(options);

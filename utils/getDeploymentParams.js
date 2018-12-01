@@ -1,14 +1,11 @@
 const pkgDir = require('pkg-dir');
 const fs = require('fs-extra');
 const { join } = require('path');
-const inquirer = require('inquirer');
+const requiredParam = require('@slswt/utils/requiredParam');
 const getReleaseInfo = require('../utils/getReleaseInfo');
-const { AWS_REGIONS } = require('../constants');
 
-const getKey = async (dirname, deployConfig, regionMaybeNull = null) => {
+const getDeploymentParams = (dirname, region) => {
   const root = pkgDir.sync(dirname);
-
-  let region = regionMaybeNull;
 
   const params = [
     'project',
@@ -24,32 +21,19 @@ const getKey = async (dirname, deployConfig, regionMaybeNull = null) => {
 
   const { version, environment } = getReleaseInfo(dirname);
   const slswtRc = JSON.parse(fs.readFileSync(join(root, '.slswtrc')));
-  const { awsAccountId } = JSON.parse(
+  const { accountId = requiredParam('accountId') } = JSON.parse(
     fs.readFileSync(join(root, '.slswtrc.secrets')),
   );
 
-  if (!region) {
-    const { selectedRegion } = await inquirer.prompt([
-      {
-        name: 'selectedRegion',
-        type: 'list',
-        message: 'Region where to deploy the service',
-        choices: AWS_REGIONS,
-      },
-    ]);
-    region = selectedRegion;
-  }
-
-
-  const keys = deployConfig({
+  const keys = {
     project: slswtRc.projectId,
     platform: 'aws',
-    account: awsAccountId,
+    account: accountId,
     region,
     environment,
     version,
     path: slswtPath,
-  });
+  };
 
   return {
     ...params.reduce(
@@ -63,4 +47,5 @@ const getKey = async (dirname, deployConfig, regionMaybeNull = null) => {
     path: slswtPath,
   };
 };
-module.exports = getKey;
+
+module.exports = getDeploymentParams;

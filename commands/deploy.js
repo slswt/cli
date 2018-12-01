@@ -1,56 +1,51 @@
 const pkgDir = require('pkg-dir');
 const fs = require('fs-extra');
 const { join, parse, relative } = require('path');
-const inquirer = require('inquirer');
 const confirmFileCreation = require('../utils/confirmFileCreation');
-const getReleaseInfo = require('../utils/getReleaseInfo');
 const liveTemplate = require('../utils/liveTemplate');
-const { AWS_REGIONS } = require('../constants');
-const getDeployKey = require('../utils/getDeployKey');
+const askForRegion = require('../utils/askForRegion');
+const getDeployURI = require('../utils/getDeployURI');
+const getDeploymentParams = require('../utils/getDeploymentParams');
+const getParamsFromLiveFolderPath = require('../utils/getParamsFromLiveFolderPath');
 
 module.exports = async (somedir) => {
   let dirname = somedir;
+
+  let region;
 
   if (somedir.match(/\.Live/)) {
     const { source } = JSON.parse(
       fs.readFileSync(join(somedir, 'source.json')),
     );
     dirname = join(somedir, source);
+    ({ region } = getParamsFromLiveFolderPath(somedir));
+  }
+
+  if (!region) {
+    region = await askForRegion();
   }
 
   const root = pkgDir.sync(dirname);
   const slswtRc = JSON.parse(fs.readFileSync(join(root, '.slswtrc')));
-  const { roleArn } = JSON.parse(
+  const { role, accountId } = JSON.parse(
     fs.readFileSync(join(root, '.slswtrc.secrets')),
   );
-  const deployConfig = require(join(dirname, 'deploy.js'));
-  const params = await getDeployKey(dirname, deployConfig);
-  const {
-    project,
-    platform,
-    account,
+  const roleArn = `arn:aws:iam::${accountId}:role/${role}`;
+
+  const deployURI = getDeployURI(dirname, region);
+
+  const liveDirectory = join(root, '.Live', deployURI);
+  const key = join('.Live', deployURI, 'terraform.tfstate');
+
+  console.log({
+    stateBucket: slswtRc.tfRemoteStateBucket,
+    stateBucketRegion: slswtRc.tfRemoteStateBucketRegion,
+    role: roleArn,
+    moduleName: parse(dirname).name,
+    key,
+    source: relative(liveDirectory, dirname),
     region,
-    environment,
-    version,
-    path,
-  } = params;
-
-  console.log(project, platform, account, region, environment, version, path);
-
-  const p = join(
-    project,
-    platform,
-    account,
-    region,
-    environment,
-    version,
-    path,
-  );
-
-  const liveDirectory = join(root, '.Live', p);
-  const key = join('.Live', p, 'terraform.tfstate');
-  console.log(key);
-
+  });
   const template = liveTemplate({
     stateBucket: slswtRc.tfRemoteStateBucket,
     stateBucketRegion: slswtRc.tfRemoteStateBucketRegion,
@@ -60,6 +55,7 @@ module.exports = async (somedir) => {
     source: relative(liveDirectory, dirname),
     region,
   });
+  console.log(template);
 
   const mainTf = join(liveDirectory, 'main.tf');
   const okey = await confirmFileCreation([mainTf]);
@@ -77,6 +73,11 @@ module.exports = async (somedir) => {
       null,
       2,
     )}\n`,
+  );
+  const params = getDeploymentParams(dirname, region);
+  fs.writeFileSync(
+    join(liveDirectory, 'params.json'),
+    `${JSON.stringify(params, null, 2)}\n`,
   );
   console.log('Run tf init and tf apply in');
   console.log(`cd ${liveDirectory}`);

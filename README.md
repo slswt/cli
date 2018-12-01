@@ -1,31 +1,23 @@
 # Workflow
 
     .
-    ├── .Live                    # The latest deployed files
+    ├── .Live
     │   ├── {environment}
     │   │   ├── {version}
-    ├── Blueprints               # Anything in the Blueprints will be released under new tag every time * (1)
-    │   ├── data_stores          # Rarely used, if you want a new data store for each release (be aware of account limitations e.g. max 100 s3 buckets)
-    │   ├── services             # Keep services, like iam, apigw, appsync etc here.
-    │   │   ├── microservices    # Put your microservices here. The paths used in the lambda functions will be relative to the microservices folder * (2)
-    ├── Environments             # This is where you keep items which should be persisted across releases and that should not be replicated * (3)
-    │   ├── stage
-    │   │   ├── data_stores      # Like aurora or elastic search
-    │   │   ├── services         # Keep services, like iam, apigw, appsync etc here.
-    │   ├── prod
-    │   │   ├── data_stores      # Like aurora or elastic search
-    │   │   ├── services         # Keep services, like iam, apigw, appsync etc here.
+    │   │   │   ├── {account}
+    │   │   │   │   ├── {region}
+    │   │   │   │   │   ├── {environment}
+    │   │   │   │   │   │   ├── {version}
+    │   │   │   │   │   │   │   ├── {path}
+    ├── data_stores
+    ├── services
     ├── Global                     
     │   ├── s3
-    │   │   ├── remote_state     # This folder contains the terraform state
-    ├── Modules                  # Own Modules that you can re-use
-    │   └── ...                  # etc.
+    │   │   ├── remote_state
+    ├── Modules
+    │   └── ...
     └── ...
 
-*
-  1. The blueprints folder will get new release tag on every commit in master and on every new branch (when running swt deploy)
-  2. As all the microservices lies here you can reference them by absolute path relative to the microservices folder.
-  3. Extra care should be taken when handling these modules. Deleting a folder does not mean that the resources is deleted. Deploy with care.
 
 ### Referencing other modules
 A release means that all of the services that are pushed from the Blueprints folder are prefixed with the environment+version (the tag).
@@ -45,21 +37,16 @@ Remember that one microservice consists of multiple other resources like iam rol
 
 ### Names
 
-  dynamodb: md5(.Live/project/platform/account/region/environment/version/path)
-  lambda: md5(.Live/project/platform/account/region/environment/version/path/service_without_extension.entry)
+  dynamodb: md5(.Live/project/platform/account/region/environment/version/path/aws_dynamodb_table/id)
+  lambda: md5(.Live/project/platform/account/region/environment/version/path/aws_lambda_function/id/entry)
   appsync datasource name: md5(.Live/project/platform/account/region/environment/version/path/md5(jsonencode(var.fields)))
 
-# Params:
-  project,
-  platform,
-  account,
-  region,
-  environment,
-  version,
-  path,
 
-The path cannot be updated through the deploy.js file.
-
-
-Stage is whenever not on master or there is a folder called stage in the path
-Prod is whenever on master or there is a folder called prod in the path
+### Deployment params
+ * `project`: Your project id
+ * `platform`: The platform deploying to
+ * `account`: 
+ * `region`: 
+ * `environment`: 
+ * `version`: 
+ * `path`: 
