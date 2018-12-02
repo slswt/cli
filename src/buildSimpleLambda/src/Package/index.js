@@ -40,13 +40,12 @@ class Compilation {
     this.region = region;
 
     const {
-      project,
-      environment,
-      version,
-      path,
-    } = getParamsFromLiveFolderPath(liveFolder);
+      project, environment, version, path,
+    } = getParamsFromLiveFolderPath(
+      liveFolder,
+    );
 
-    this.deploymentIdParams = {
+    this.parsedDeploymentParams = {
       project,
       environment,
       version,
@@ -72,8 +71,8 @@ class Compilation {
 
     this.names = { serviceNoExt, id };
 
-    this.deploymentParams = JSON.parse(
-      fs.readFileSync(join(liveFolder, 'params.json')),
+    this.rawDeploymentParams = JSON.parse(
+      fs.readFileSync(join(liveFolder, 'rawParams.json')),
     );
   }
 
@@ -137,7 +136,7 @@ class Compilation {
         return Promise.resolve({
           data: slswtBabelTransform(
             noDeps.fs.data[Object.keys(noDeps.fs.data)[0]],
-            this.deploymentParams,
+            this.rawDeploymentParams,
             this.folders.source,
           ),
           usedDependencies: getUsedDependencies(deps.stats),

@@ -51,9 +51,9 @@ function print() {
     functionNames,
     functionDescriptions,
     lambdaHandlers,
-    ...this.deploymentIdParams,
+    ...this.parsedDeploymentParams,
     /* the actual env params, not filtered by the deploy.js */
-    ...Object.entries(this.deploymentParams).reduce(
+    ...Object.entries(this.rawDeploymentParams).reduce(
       (curr, [key, val]) => ({
         ...curr,
         [`env_${key}`]: val,

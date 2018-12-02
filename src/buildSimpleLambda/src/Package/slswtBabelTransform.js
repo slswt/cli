@@ -29,7 +29,7 @@ const slswtBabelTransform = (sourceCode, deploymentParams, sourceFolder) => {
             version,
           } = readServiceParseDeploymentParams(sourceFolder, deploymentParams);
 
-          if (serviceName === 'aws_lambda') {
+          if (serviceName === 'aws_lambda_function') {
             resourceURI = join(
               project,
               environment,

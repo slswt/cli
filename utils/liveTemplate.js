@@ -30,6 +30,7 @@ const liveTemplate = ({
   source = requiredParam('source'),
   providers = requiredParam('providers'),
   region = requiredParam('region'),
+  output = requiredParam('output'),
 }) => `
 terraform {
   required_version = "> 0.11.0"
@@ -51,6 +52,8 @@ ${Object.keys(providers)
 module "${moduleName}" {
   source = "${source}"
 }
+
+${output}
 
 `;
 
