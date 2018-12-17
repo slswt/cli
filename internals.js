@@ -15,6 +15,9 @@ const parseDir = require('./utils/parseDir');
 const getBranchName = require('./utils/getBranchName');
 const getLatestHash = require('./utils/getLatestHash');
 const getReleaseInfo = require('./utils/getReleaseInfo');
+const getDeploymentParams = require('./utils/getDeploymentParams');
+const readServiceParseDeploymentParams = require('./utils/readServiceParseDeploymentParams');
+const paramsToURI = require('./utils/paramsToURI');
 const naming = require('./naming');
 
 program.version('0.0.1');
@@ -192,6 +195,35 @@ program
       `${JSON.stringify(
         {
           servicePath,
+        },
+        null,
+        2,
+      )}\n`,
+    );
+  });
+
+program
+  .command('slswt-global-deployment-uri [dirname]')
+  .option('-p, --path <path>', 'path to the deployment folder')
+  .description('gets deployment data')
+  .action((dir, options) => {
+    const liveFolder = parseDir(dir);
+    const { path: rawPath } = options;
+    const root = pkgDir.sync(liveFolder);
+
+    const sourceFolder = join(root, rawPath);
+
+    const rawDeploymentParams = getDeploymentParams(liveFolder);
+
+    const parsedDeploymentParams = readServiceParseDeploymentParams(
+      sourceFolder,
+      rawDeploymentParams,
+    );
+
+    process.stdout.write(
+      `${JSON.stringify(
+        {
+          globalDeploymentURI: paramsToURI(parsedDeploymentParams),
         },
         null,
         2,

@@ -7,11 +7,7 @@ const readServiceParseDeploymentParams = require('../utils/readServiceParseDeplo
 const getDeployURI = (dirname) => {
   const root = pkgDir.sync(dirname);
 
-  const params = [
-    'project',
-    'environment',
-    'version',
-  ];
+  const params = ['project', 'environment', 'version', 'path'];
 
   const slswtPath = dirname.replace(root, '').replace(/^\//, '');
 
@@ -25,10 +21,6 @@ const getDeployURI = (dirname) => {
     path: slswtPath,
   });
 
-  return join(
-    ...params.map((key) => (keys[key] ? keys[key].toString() : '_')),
-    /* the path cannot be updated */
-    slswtPath,
-  );
+  return join(...params.map((key) => (keys[key] ? keys[key].toString() : '_')));
 };
 module.exports = getDeployURI;

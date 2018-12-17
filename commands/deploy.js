@@ -8,28 +8,7 @@ const liveTemplate = require('../utils/liveTemplate');
 const askForRegion = require('../utils/askForRegion');
 const getDeployURI = require('../utils/getDeployURI');
 const getDeploymentParams = require('../utils/getDeploymentParams');
-
-const getOutput = (sourceDirectory, moduleName) => {
-  const re = /^output\s+"([^"]+)"\s+\{\s+value/gm;
-  const concated = glob
-    .sync(join(sourceDirectory, '*.tf'))
-    .map((fpath) => `${fs.readFileSync(fpath)}\n`)
-    .reduce((concatedContent, content) => `${concatedContent}\n${content}`, '');
-  let match = get(re.exec(concated), 1);
-  const matches = [];
-  while (match) {
-    matches.push(match);
-    match = get(re.exec(concated), 1);
-  }
-  const hclOutputs = matches.reduce((all, name) => `
-${all}
-
-output "${name}" {
-  value = "\${module.${moduleName}.${name}}"
-}
-`, '');
-  return hclOutputs;
-};
+const readServiceParseDeploymentParams = require('../utils/readServiceParseDeploymentParams');
 
 module.exports = async (somedir) => {
   let dirname = somedir;
@@ -49,20 +28,20 @@ module.exports = async (somedir) => {
 
   const region = await askForRegion();
 
-  const liveDirectory = join(root, '.Live', deployURI);
+  const liveFolder = join(root, '.Live', deployURI);
   const key = join('.Live', deployURI, `${region}.terraform.tfstate`);
 
   const moduleName = parse(dirname).name;
+  const rawParams = getDeploymentParams(dirname);
+  const parsedParams = readServiceParseDeploymentParams(dirname, rawParams);
 
   console.log({
     stateBucket: slswtRc.tfRemoteStateBucket,
     stateBucketRegion: slswtRc.tfRemoteStateBucketRegion,
     moduleName,
     key,
-    source: relative(liveDirectory, dirname),
+    source: relative(liveFolder, dirname),
   });
-
-  const output = getOutput(dirname, moduleName);
 
   /* @TODO ask for which providers should be available */
 
@@ -71,35 +50,37 @@ module.exports = async (somedir) => {
     stateBucketRegion: slswtRc.tfRemoteStateBucketRegion,
     moduleName,
     key,
-    source: relative(liveDirectory, dirname),
+    relativeSource: relative(liveFolder, dirname),
+    liveFolder,
+    sourceFolder: dirname,
     region,
     providers,
-    output,
+    parsedParams,
+    sourceContent: fs.readFileSync(join(liveFolder, 'main.tf')),
   });
   console.log(template);
 
-  const mainTf = join(liveDirectory, 'main.tf');
+  const mainTf = join(liveFolder, 'main.tf');
   const okey = await confirmFileCreation([mainTf]);
   if (!okey) {
     return;
   }
-  fs.ensureDirSync(liveDirectory);
+  fs.ensureDirSync(liveFolder);
   fs.writeFileSync(mainTf, template);
   fs.writeFileSync(
-    join(liveDirectory, 'source.json'),
+    join(liveFolder, 'source.json'),
     `${JSON.stringify(
       {
-        source: relative(liveDirectory, dirname),
+        source: relative(liveFolder, dirname),
       },
       null,
       2,
     )}\n`,
   );
-  const rawParams = getDeploymentParams(dirname);
   fs.writeFileSync(
-    join(liveDirectory, 'rawParams.json'),
+    join(liveFolder, 'rawParams.json'),
     `${JSON.stringify(rawParams, null, 2)}\n`,
   );
   console.log('Run tf init and tf apply in');
-  console.log(`cd ${liveDirectory}`);
+  console.log(`cd ${liveFolder}`);
 };

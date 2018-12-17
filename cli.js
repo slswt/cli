@@ -9,6 +9,7 @@ const template = require('./commands/template');
 const scaffold = require('./commands/scaffold');
 const invoke = require('./commands/invoke');
 const deploy = require('./commands/deploy');
+const ciDeploy = require('./commands/ciDeploy');
 const parseDir = require('./utils/parseDir');
 
 program.version('0.0.1');
@@ -37,6 +38,13 @@ program
       stateBucketRegion: region,
       providers,
     });
+  });
+
+program
+  .command('ci_deploy [dir]')
+  .description('Deploy everything')
+  .action((dir) => {
+    ciDeploy(pkgDir.sync(parseDir(dir)));
   });
 
 program

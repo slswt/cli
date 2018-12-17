@@ -1,21 +1,17 @@
 const pkgDir = require('pkg-dir');
 const fs = require('fs-extra');
 const { join } = require('path');
+const requiredParam = require('@slswt/utils/requiredParam');
 const getReleaseInfo = require('../utils/getReleaseInfo');
 
-const getDeploymentParams = (dirname) => {
-  const root = pkgDir.sync(dirname);
+const getDeploymentParams = (liveFolder = requiredParam('liveFolder')) => {
+  const root = pkgDir.sync(liveFolder);
 
-  const params = [
-    'project',
-    'environment',
-    'version',
-    'path',
-  ];
+  const params = ['project', 'environment', 'version', 'path'];
 
-  const slswtPath = dirname.replace(root, '').replace(/^\//, '');
+  const slswtPath = liveFolder.replace(root, '').replace(/^\//, '');
 
-  const { version, environment } = getReleaseInfo(dirname);
+  const { version, environment } = getReleaseInfo(liveFolder);
   const slswtRc = JSON.parse(fs.readFileSync(join(root, '.slswtrc')));
 
   const keys = {
@@ -25,17 +21,13 @@ const getDeploymentParams = (dirname) => {
     path: slswtPath,
   };
 
-  return {
-    ...params.reduce(
-      (curr, key) => ({
-        ...curr,
-        [key]: keys[key] ? keys[key].toString() : '_',
-      }),
-      {},
-    ),
-    /* the path cannot be updated */
-    path: slswtPath,
-  };
+  return params.reduce(
+    (curr, key) => ({
+      ...curr,
+      [key]: keys[key] ? keys[key].toString() : '_',
+    }),
+    {},
+  );
 };
 
 module.exports = getDeploymentParams;
