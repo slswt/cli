@@ -12,7 +12,7 @@ output "root_resource_id" {
 }
 
 resource "aws_api_gateway_domain_name" "api_gateway_domain" {
-  domain_name = "kyc-stage.redeye.se"
+  domain_name = "some-domain.domain.com"
 }
 
 # Example DNS record using Route53.
