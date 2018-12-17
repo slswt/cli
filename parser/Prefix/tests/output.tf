@@ -34,8 +34,8 @@ data "terraform_remote_state" "some_path_main_microservices_apigw" {
   backend = "s3"
 
   config {
-    bucket = "slswt-remote-state-screed-website-backend"
-    key    = ".Live/screed-website-backend/aws/018672444785/eu-west-3/_/_/services/apigw/terraform.tfstate"
+    bucket = "slswt-remote-state-website-backend"
+    key    = ".Live/website-backend/aws/xxx/eu-west-3/_/_/services/apigw/terraform.tfstate"
     region = "eu-central-1"
   }
 }
