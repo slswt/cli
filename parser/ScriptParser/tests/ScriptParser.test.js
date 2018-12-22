@@ -9,7 +9,10 @@ test('parsing scripts', () => {
   const hclParser = new ScriptParser({
     hcl,
     deploymentParams: {
+      project: 'wefwef',
+      platform: 'omgomg',
       environment: 'stage',
+      version: '123',
     },
     sourceFile: join(__dirname, 'main.tf'),
     rootFolder: __dirname,

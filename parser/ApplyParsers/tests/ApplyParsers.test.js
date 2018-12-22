@@ -14,6 +14,8 @@ test('ApplyParsers', () => {
     rootFolder: join(__dirname, 'testProject'),
   });
 
-  const result = parser.build(join(__dirname, 'testProject/somemodule/main.tf'));
+  const result = parser.build(
+    join(__dirname, 'testProject/somemodule/main.tf'),
+  );
   console.log(result);
 });

@@ -28,6 +28,21 @@ output "main_execution_arn" {
 output "main_deployment_uri" {
   value = "${module.main_api_gateway.deployment_uri}"
 }
+
+
+
+resource "aws_route53_record" "domain_example" {
+      zone_id = "${aws_route53_zone.domain_example.id}"
+name = "wefwef-245dd4"
+type = "A"
+alias = {
+      name = "${aws_api_gateway_domain_name.domain_api_gateway_domain.cloudfront_domain_name}"
+zone_id = "${aws_api_gateway_domain_name.domain_api_gateway_domain.cloudfront_zone_id}"
+evaluate_target_health = {
+      
+    }
+    }
+    }
 module "table_table" {
   source         = "github.com/slswt/modules//data_stores/ddb/simple_table"
   read_capacity  = 3

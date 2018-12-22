@@ -40,3 +40,18 @@ output "execution_arn" {
 output "deployment_uri" {
   value = "${module.api_gateway.deployment_uri}"
 }
+
+
+
+```
+resource("aws_route53_record", "domain_example", "name", {
+  zone_id: "${aws_route53_zone.domain_example.id}",
+  name: "${aws_api_gateway_domain_name.domain_api_gateway_domain.domain_name}",
+  type: "A",
+  alias: {
+    name                   : "${aws_api_gateway_domain_name.domain_api_gateway_domain.cloudfront_domain_name}",
+    zone_id                : "${aws_api_gateway_domain_name.domain_api_gateway_domain.cloudfront_zone_id}",
+    evaluate_target_health : true,
+  }
+});
+```

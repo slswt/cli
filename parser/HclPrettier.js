@@ -6,7 +6,7 @@ class HclPrettier {
   }
 
   format() {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const cp = execFile('terraform', ['fmt', '-'], {
         cwd: process.cwd(),
         stdio: ['pipe', 'pipe', 'inherit'],
@@ -19,6 +19,11 @@ class HclPrettier {
       cp.stdout.on('end', () => {
         resolve(string);
       });
+
+      cp.stdout.on('error', (err) => {
+        reject(err);
+      });
+
       cp.stdin.write(this.hcl);
       cp.stdin.end();
     });

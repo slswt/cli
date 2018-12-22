@@ -1,5 +1,6 @@
 /* eslint-env jest */
 import Resource from './Resource';
+import HclPrettier from './HclPrettier';
 
 const deploymentParams = {
   project: 'theWefProject',
@@ -21,13 +22,15 @@ test('Resource', async () => {
     rootFolder: '/',
   });
   // const ref = new Ref(deploymentParams);
-  const result = await resource.generate();
+  const hcl = resource.generate();
+  const prettier = new HclPrettier(hcl);
 
   const expected = `resource "aws_dynamo_db_table" "sometable" {
   role        = "\${aws_lambda_function.some_function.role}"
-  name        = "theWefProject/stage/123/aws/eu-north-1/aws_dynamo_db_table.some_path_main_sometable"
+  name        = "theWefProject-8097ef"
   description = "theWefProject/stage/123/aws/eu-north-1/aws_dynamo_db_table.some_path_main_sometable"
 }
 `;
+  const result = await prettier.format();
   expect(result).toBe(expected);
 });

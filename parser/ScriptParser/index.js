@@ -4,13 +4,14 @@ import vm from 'vm';
 import get from 'lodash/get';
 import last from 'lodash/last';
 import requiredParam from '../utils/requiredParam';
-import sandboxMethods from './sandboxMethods';
 import getMatches from './getMatches';
 import replaceMatches from './replaceMatches';
 import Prefix from '../Prefix/Prefix';
 import getRelativePath from '../utils/getRelativePath';
 import changeRelativeModuleDirectory from '../changeRelativeModuleDirectory';
 import matchesToSingleArray from './matchesToSingleArray';
+import Sandbox from './Sandbox';
+import HclPrettier from '../HclPrettier';
 
 class ScriptParser {
   constructor({
@@ -34,26 +35,70 @@ class ScriptParser {
     this.references = [];
   }
 
+  addDeploymentPlatform = ({ newDeploymentParams, log }) => {
+    console.log(
+      `As the folloing: ${log}\n`,
+      'is referenced under another platform',
+      'this needs to be deployed separately',
+    );
+    /* @todo add functionality for adding deployment platform */
+  };
+
+  addInclude = ({
+    fpath = requiredParam('fpath'),
+    deploymentParams = requiredParam('deploymentParams'),
+  }) => {
+    this.includes.push({
+      fpath,
+      deploymentParams,
+    });
+  };
+
+  addInsert = ({
+    hcl = requiredParam('hcl'),
+    deploymentParams = requiredParam('deploymentParams'),
+  }) => {
+    this.inserts.push({ hcl, deploymentParams });
+  };
+
+  addInplaceInsert = ({
+    value = requiredParam('value'),
+    id = requiredParam('id'),
+  }) => {
+    this.inplaceInserts.push({
+      value,
+      id,
+    });
+  };
+
+  registerReference = ({
+    sourceFile = requiredParam('sourceFile'),
+    type = requiredParam('type'),
+    name = requiredParam('name'),
+    key = requiredParam('key'),
+    deploymentParams = requiredParam('deploymentParams'),
+  }) => {
+    /* @todo */
+  };
+
   evalScripts(scripts) {
     scripts.forEach(({ code, id, line }) => {
-      const sandbox = {
-        ...this.deploymentParams,
-        fs,
-        path,
-        __dirname: path.parse(this.sourceFile).dir,
-        ...sandboxMethods({
-          id,
-          deploymentParams: this.deploymentParams,
-          sourceFile: this.sourceFile,
-          references: this.references,
-          includes: this.includes,
-          inplaceInserts: this.inplaceInserts,
-          rootFolder: this.rootFolder,
-        }),
-      };
-      vm.createContext(sandbox); // Contextify the sandbox.
+      const sandbox = new Sandbox({
+        id,
+        deploymentParams: this.deploymentParams,
+        sourceFile: this.sourceFile,
+        rootFolder: this.rootFolder,
+        addDeploymentPlatform: this.addDeploymentPlatform,
+
+        addInclude: this.addInclude,
+        addInsert: this.addInsert,
+        addInplaceInsert: this.addInplaceInsert,
+        registerReference: this.registerReference,
+      });
+      const context = sandbox.getContext();
+      vm.createContext(context); // Contextify the sandbox.
       try {
-        vm.runInContext(code, sandbox);
+        vm.runInContext(code, context);
       } catch (err) {
         console.log(code, `@ line ${line} in ${this.sourceFile}`);
         throw new Error(err.stack);
